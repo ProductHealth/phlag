@@ -30,6 +30,9 @@ type Phlag struct {
 
 }
 
+// Logger function, replace by your preferred implementation
+var Logger func(string, ...interface{}) = log.Printf
+
 // Minimal interface definition around etcd client, allows creation of fake in tests
 type etcdClient interface {
 	Get(string, bool, bool) (*etcd.Response, error)
@@ -45,11 +48,11 @@ func NewWithEndpoint(endpoint *url.URL, template string) (*Phlag, error) {
 	case !endpoint.IsAbs() : err = errors.New(fmt.Sprintf("endpoint '%v' is not an absolute url ( http://foo.com:4001 )", endpoint.String()))
 	}
 	if err != nil {
-		log.Println(err.Error())
+		Logger(err.Error())
 		return nil, err
 	}
 
-	log.Printf("Using etcd endpoint : %v", endpoint.String())
+	Logger("Using etcd endpoint : %v", endpoint.String())
 	client := etcd.NewClient([]string{endpoint.String()})
 	client.SetConsistency(etcd.WEAK_CONSISTENCY)
 	return NewWithClient(client, template), nil
@@ -64,7 +67,7 @@ func NewFromEnvironment(envName string, template string) (*Phlag, error) {
 	case e != nil : err = errors.New(fmt.Sprintf("%v environment variable does not contain a valid url", envName))
 	}
 	if err != nil {
-		log.Println(err.Error())
+		Logger(err.Error())
 		return nil, err
 	}
 	return NewWithEndpoint(parsedEtcdUrl, template)
@@ -78,22 +81,19 @@ func NewWithClient(client etcdClient, template string) *Phlag {
 func (e *Phlag) Get(name string) *string {
 	if flagGiven(flagSet, name) {
 		valueFromCli := flagSet.Lookup(name)
-		log.Printf("Using command line value %v for param %v", valueFromCli.Value.String(), name)
+		Logger("Using command line value %v for param %v", valueFromCli.Value.String(), name)
 		cliValue := valueFromCli.Value.String()
 		return &cliValue
 	} else {
 		// No command line param given, lookup through etcd
-		// log.Printf("Fetching param %v from etcd", name)
 		etcPath := fmt.Sprintf(e.etcdPathTemplate, name)
-		// log.Printf("Using etc path %v", etcPath)
 		valueFromEtcd, err := e.client.Get(etcPath, false, false)
 		if err != nil { // TODO : Sort out '100: Key not found' messages
-			log.Printf(err.Error())
+			Logger(err.Error())
 			return nil
 		}
 		if valueFromEtcd.Node != nil {
-			// log.Printf("Returing node value %v", valueFromEtcd.Node.Value)
-			log.Printf("Using etcd value %v for param %v", valueFromEtcd.Node.Value, name)
+			Logger("Using etcd value %v for param %v", valueFromEtcd.Node.Value, name)
 			return &valueFromEtcd.Node.Value
 		}
 		return nil
@@ -117,10 +117,9 @@ func (e *Phlag) Resolve(target interface{}) {
 		configuredName := field.Tag(phlagTag)
 		resolvedValue := e.Get(configuredName)
 		if resolvedValue == nil {
-			log.Printf("Cannot resolve field %v using cli params or etcd", configuredName)
+			Logger("Cannot resolve field %v using cli params or etcd", configuredName)
 			continue
 		}
-		// log.Printf("Field %v is of type %v, setting resolved value %v", field.Name(), field.Kind().String(), *resolvedValue)
 		var err error
 		switch {
 		case field.Kind() == durationKind:
@@ -142,12 +141,11 @@ func (e *Phlag) Resolve(target interface{}) {
 			v, _ := strconv.Atoi(*resolvedValue)
 			err = field.Set(v)
 		default:
-			log.Printf("Unable to handle reflect.Kind : %v", field.Kind())
+			Logger("Unable to handle reflect.Kind : %v", field.Kind())
 		}
 		if err != nil {
-			log.Printf("Could not set field %v, encoutered error %v", field.Name(), err.Error())
+			Logger("Could not set field %v, encoutered error %v", field.Name(), err.Error())
 		}
-		//log.Printf("Field %v now has value %v", field.Name(), field.Value())
 	}
 }
 
