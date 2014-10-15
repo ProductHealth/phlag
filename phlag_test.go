@@ -75,7 +75,7 @@ func TestFlagGivenValidatesGivenFlags(t *testing.T) {
 
 func TestNewClientCreationFailsWhenEnvVarDoesNotExist(t *testing.T) {
 	_, err := NewFromEnvironment("TEST_ENV_1", "")
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 func TestNewClientCreationFailsWhenNonAbsoluteUrlGiven(t *testing.T) {

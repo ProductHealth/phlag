@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"log"
 	"time"
-	"errors"
 )
 
 var flagSet = flag.CommandLine
@@ -42,35 +41,32 @@ func New(template string) (*Phlag, error) {
 	return NewFromEnvironment(etcdEndpointVar, template)
 }
 
-func NewWithEndpoint(endpoint *url.URL, template string) (*Phlag, error) {
-	var err error
-	switch {
-	case !endpoint.IsAbs() : err = errors.New(fmt.Sprintf("endpoint '%v' is not an absolute url ( http://foo.com:4001 )", endpoint.String()))
+func NewFromEnvironment(envName string, template string) (*Phlag, error) {
+	etcdHostEnv := os.Getenv(envName)
+	if etcdHostEnv == "" {
+		return &Phlag{}, nil
 	}
+
+	parsedEtcdUrl, err := url.Parse(etcdHostEnv)
 	if err != nil {
 		Logger(err.Error())
 		return nil, err
+	}
+
+	return NewWithEndpoint(parsedEtcdUrl, template)
+}
+
+func NewWithEndpoint(endpoint *url.URL, template string) (*Phlag, error) {
+	if !endpoint.IsAbs() {
+		err:= fmt.Errorf("endpoint '%v' is not an absolute url ( http://foo.com:4001 )", endpoint.String())
+		Logger(err.Error())
+	 	return nil, err
 	}
 
 	Logger("Using etcd endpoint : %v", endpoint.String())
 	client := etcd.NewClient([]string{endpoint.String()})
 	client.SetConsistency(etcd.WEAK_CONSISTENCY)
 	return NewWithClient(client, template), nil
-}
-
-func NewFromEnvironment(envName string, template string) (*Phlag, error) {
-	etcdHostEnv := os.Getenv(envName)
-	parsedEtcdUrl, e := url.Parse(etcdHostEnv)
-	var err error
-	switch {
-	case etcdHostEnv == "" : err = errors.New(fmt.Sprintf("environment variable %v not defined", envName))
-	case e != nil : err = errors.New(fmt.Sprintf("%v environment variable does not contain a valid url", envName))
-	}
-	if err != nil {
-		Logger(err.Error())
-		return nil, err
-	}
-	return NewWithEndpoint(parsedEtcdUrl, template)
 }
 
 func NewWithClient(client etcdClient, template string) *Phlag {
@@ -84,20 +80,27 @@ func (e *Phlag) Get(name string) *string {
 		Logger("Using command line value %v for param %v", valueFromCli.Value.String(), name)
 		cliValue := valueFromCli.Value.String()
 		return &cliValue
-	} else {
-		// No command line param given, lookup through etcd
-		etcPath := fmt.Sprintf(e.etcdPathTemplate, name)
-		valueFromEtcd, err := e.client.Get(etcPath, false, false)
-		if err != nil { // TODO : Sort out '100: Key not found' messages
-			Logger(err.Error())
-			return nil
-		}
-		if valueFromEtcd.Node != nil {
-			Logger("Using etcd value %v for param %v", valueFromEtcd.Node.Value, name)
-			return &valueFromEtcd.Node.Value
-		}
+	}
+
+	if e.client == nil {
 		return nil
 	}
+
+	// No command line param given, lookup through etcd
+	// Logger("Fetching param %v from etcd", name)
+	etcPath := fmt.Sprintf(e.etcdPathTemplate, name)
+	// Logger("Using etc path %v", etcPath)
+	valueFromEtcd, err := e.client.Get(etcPath, false, false)
+	if err != nil { // TODO : Sort out '100: Key not found' messages
+		Logger(err.Error())
+		return nil
+	}
+	if valueFromEtcd.Node != nil {
+		// Logger("Returing node value %v", valueFromEtcd.Node.Value)
+		Logger("Using etcd value %v for param %v", valueFromEtcd.Node.Value, name)
+		return &valueFromEtcd.Node.Value
+	}
+	return nil
 }
 
 func (e *Phlag) Resolve(target interface{}) {
@@ -120,6 +123,7 @@ func (e *Phlag) Resolve(target interface{}) {
 			Logger("Cannot resolve field %v using cli params or etcd", configuredName)
 			continue
 		}
+		// Logger("Field %v is of type %v, setting resolved value %v", field.Name(), field.Kind().String(), *resolvedValue)
 		var err error
 		switch {
 		case field.Kind() == durationKind:
@@ -146,6 +150,7 @@ func (e *Phlag) Resolve(target interface{}) {
 		if err != nil {
 			Logger("Could not set field %v, encoutered error %v", field.Name(), err.Error())
 		}
+		//Logger("Field %v now has value %v", field.Name(), field.Value())
 	}
 }
 
