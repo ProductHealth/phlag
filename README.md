@@ -7,6 +7,9 @@ Command line configuration library with etcd fallback.
 By default phlag uses the etcd endpoint as define int he ETCD_ENDPOINT environment variable.
 In order to use a different variable or your own etcd client use one of the alternative methods in the phlag package.
 
+## Logging
+Phlag logs to the sdk logger by default, if you prefer a different logging framework overwrite phlag.Logger with the implementation you prefer. 
+
 # Usage
 
 ```
