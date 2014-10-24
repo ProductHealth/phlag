@@ -45,7 +45,7 @@ func New(template string) (*Phlag, error) {
 	return NewWithClient(client, template), nil
 }
 
-func NewEtcdClientFromEnvironment(envName string) (etcdClient, error) {
+func NewEtcdClientFromEnvironment(envName string) (*etcd.Client, error) {
 	etcdHostEnv := os.Getenv(envName)
 	if etcdHostEnv == "" {
 		return nil, fmt.Errorf("Env var %v empty or nonexistent", envName)
@@ -59,7 +59,7 @@ func NewEtcdClientFromEnvironment(envName string) (etcdClient, error) {
 	}
 }
 
-func NewEtcdClientWithEndpoint(endpoint *url.URL) (etcdClient, error) {
+func NewEtcdClientWithEndpoint(endpoint *url.URL) (*etcd.Client, error) {
 	if !endpoint.IsAbs() {
 		err := fmt.Errorf("endpoint '%v' is not an absolute url ( http://foo.com:4001 )", endpoint.String())
 		Logger(err.Error())
