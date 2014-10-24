@@ -1,20 +1,20 @@
 package phlag
 
 import (
-	"testing"
-	"flag"
-	"github.com/stretchr/testify/assert"
-	"github.com/coreos/go-etcd/etcd"
-	"os"
-	"fmt"
 	"errors"
+	"flag"
+	"fmt"
+	"github.com/coreos/go-etcd/etcd"
+	"github.com/stretchr/testify/assert"
+	"os"
+	"testing"
 	"time"
 )
 
 type testStruct struct {
-	StringField    string           `phlag:"s"`
-	IntField       int              `phlag:"i"`
-	DurationField  time.Duration    `phlag:"d"`
+	StringField   string        `phlag:"s"`
+	IntField      int           `phlag:"i"`
+	DurationField time.Duration `phlag:"d"`
 }
 
 const (
@@ -23,7 +23,7 @@ const (
 )
 
 type fakeEtcdClient struct {
-	values    map[string]etcd.Response
+	values map[string]etcd.Response
 }
 
 func newFakeEtcdClient() *fakeEtcdClient {
@@ -34,20 +34,20 @@ func newFakeEtcdClient() *fakeEtcdClient {
 func StringNodeResponse(value string) etcd.Response {
 	return etcd.Response{
 		Action: "GET",
-		Node: &etcd.Node {
-			Key: "",
-			Value: value,
-			Dir: false,
-			Expiration: nil,
-			TTL: 0,
-			Nodes: etcd.Nodes{},
+		Node: &etcd.Node{
+			Key:           "",
+			Value:         value,
+			Dir:           false,
+			Expiration:    nil,
+			TTL:           0,
+			Nodes:         etcd.Nodes{},
 			ModifiedIndex: 0,
-			CreatedIndex:0,
+			CreatedIndex:  0,
 		},
-		PrevNode: nil,
+		PrevNode:  nil,
 		EtcdIndex: 0,
 		RaftIndex: 0,
-		RaftTerm: 0,
+		RaftTerm:  0,
 	}
 }
 
@@ -73,29 +73,29 @@ func TestFlagGivenValidatesGivenFlags(t *testing.T) {
 	assert.False(t, flagGiven(fs, "test2"))
 }
 
-func TestNewClientCreationFailsWhenEnvVarDoesNotExist(t *testing.T) {
-	_, err := NewFromEnvironment("TEST_ENV_1", "")
-	assert.NoError(t, err)
+func TestNewEtcdClientClientCreationFailsWhenEnvVarDoesNotExist(t *testing.T) {
+	_, err := NewEtcdClientFromEnvironment("TEST_ENV_1")
+	assert.Error(t, err)
 }
 
-func TestNewClientCreationFailsWhenNonAbsoluteUrlGiven(t *testing.T) {
+func TestNewEtcdClientClientCreationFailsWhenNonAbsoluteUrlGiven(t *testing.T) {
 	EtcdHostEnvVar := "TEST_ENV_2"
 	os.Setenv(EtcdHostEnvVar, "1.2.3.4:4001") // scheme missing
-	_, err := NewFromEnvironment(EtcdHostEnvVar, "/")
-	assert.NotNil(t, err)
+	_, err := NewEtcdClientFromEnvironment(EtcdHostEnvVar)
+	assert.Error(t, err)
 }
 
-func TestNewClientCreationFailsWhenInvalidUrlGiven(t *testing.T) {
+func TestNewEtcdClientClientCreationFailsWhenInvalidUrlGiven(t *testing.T) {
 	EtcdHostEnvVar := "TEST_ENV_3"
 	os.Setenv(EtcdHostEnvVar, "thisisnotaurlatall!")
-	_, err := NewFromEnvironment(EtcdHostEnvVar, "")
+	_, err := NewEtcdClientFromEnvironment(EtcdHostEnvVar)
 	assert.Error(t, err)
 }
 
 func TestNewClientCreationsCompletesWhenGivenAValidUrl(t *testing.T) {
 	EtcdHostEnvVar := "TEST_ENV_4"
 	os.Setenv(EtcdHostEnvVar, "http://localhost:4001")
-	client, err := NewFromEnvironment(EtcdHostEnvVar, "testservice")
+	client, err := NewEtcdClientFromEnvironment(EtcdHostEnvVar)
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 }

@@ -1,15 +1,15 @@
 package phlag
 
 import (
-	"github.com/coreos/go-etcd/etcd"
-	"os"
-	"github.com/fatih/structs"
 	"flag"
 	"fmt"
+	"github.com/coreos/go-etcd/etcd"
+	"github.com/fatih/structs"
+	"log"
+	"net/url"
+	"os"
 	"reflect"
 	"strconv"
-	"net/url"
-	"log"
 	"time"
 )
 
@@ -20,7 +20,7 @@ var durationKind = reflect.TypeOf(time.Nanosecond).Kind()
 const (
 	phlagTag        = "phlag"
 	descriptionTag  = "description"
-	etcdEndpointVar = "ETCD_ENDPOINT"
+	EtcdEndpointVar = "ETCD_ENDPOINT"
 )
 
 type Phlag struct {
@@ -38,39 +38,42 @@ type etcdClient interface {
 }
 
 func New(template string) (*Phlag, error) {
-	return NewFromEnvironment(etcdEndpointVar, template)
-}
-
-func NewFromEnvironment(envName string, template string) (*Phlag, error) {
-	etcdHostEnv := os.Getenv(envName)
-	if etcdHostEnv == "" {
-		return &Phlag{}, nil
-	}
-
-	parsedEtcdUrl, err := url.Parse(etcdHostEnv)
+	client, err := NewEtcdClientFromEnvironment(EtcdEndpointVar)
 	if err != nil {
-		Logger(err.Error())
 		return nil, err
 	}
-
-	return NewWithEndpoint(parsedEtcdUrl, template)
+	return NewWithClient(client, template), nil
 }
 
-func NewWithEndpoint(endpoint *url.URL, template string) (*Phlag, error) {
+func NewEtcdClientFromEnvironment(envName string) (etcdClient, error) {
+	etcdHostEnv := os.Getenv(envName)
+	if etcdHostEnv == "" {
+		return nil, fmt.Errorf("Env var %v empty or nonexistent", envName)
+	} else {
+		parsedEtcdUrl, err := url.Parse(etcdHostEnv)
+		if err != nil {
+			Logger(err.Error())
+			return nil, err
+		}
+		return NewEtcdClientWithEndpoint(parsedEtcdUrl)
+	}
+}
+
+func NewEtcdClientWithEndpoint(endpoint *url.URL) (etcdClient, error) {
 	if !endpoint.IsAbs() {
-		err:= fmt.Errorf("endpoint '%v' is not an absolute url ( http://foo.com:4001 )", endpoint.String())
+		err := fmt.Errorf("endpoint '%v' is not an absolute url ( http://foo.com:4001 )", endpoint.String())
 		Logger(err.Error())
-	 	return nil, err
+		return nil, err
 	}
 
 	Logger("Using etcd endpoint : %v", endpoint.String())
 	client := etcd.NewClient([]string{endpoint.String()})
 	client.SetConsistency(etcd.WEAK_CONSISTENCY)
-	return NewWithClient(client, template), nil
+	return client, nil
 }
 
 func NewWithClient(client etcdClient, template string) *Phlag {
-	return &Phlag{client, template }
+	return &Phlag{client, template}
 }
 
 // Get the named parameter from either the cli or etcd
@@ -109,9 +112,12 @@ func (e *Phlag) Resolve(target interface{}) {
 		configuredName := field.Tag(phlagTag)
 		description := field.Tag(descriptionTag)
 		switch field.Kind() {
-		case durationKind: flagSet.String(configuredName, field.Value().(time.Duration).String(), description)
-		case reflect.String : flagSet.String(configuredName, field.Value().(string), description)
-		case reflect.Int : flagSet.Int(configuredName, field.Value().(int), description)
+		case durationKind:
+			flagSet.String(configuredName, field.Value().(time.Duration).String(), description)
+		case reflect.String:
+			flagSet.String(configuredName, field.Value().(string), description)
+		case reflect.Int:
+			flagSet.Int(configuredName, field.Value().(int), description)
 		}
 
 	}
@@ -156,7 +162,7 @@ func (e *Phlag) Resolve(target interface{}) {
 
 func flagGiven(flagSet *flag.FlagSet, name string) bool {
 	var flags = []string{}
-	flagSet.Visit(func(f *flag.Flag) { flags = append(flags, f.Name)})
+	flagSet.Visit(func(f *flag.Flag) { flags = append(flags, f.Name) })
 	return stringInSlice(name, flags)
 }
 
