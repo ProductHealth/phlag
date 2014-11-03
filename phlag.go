@@ -16,6 +16,7 @@ import (
 var flagSet = flag.CommandLine
 var flagSetArgs = os.Args[1:]
 var durationKind = reflect.TypeOf(time.Nanosecond).Kind()
+var etcdDialTimeout = time.Second * 5
 
 const (
 	phlagTag        = "phlag"
@@ -69,6 +70,7 @@ func NewEtcdClientWithEndpoint(endpoint *url.URL) (*etcd.Client, error) {
 	Logger("Using etcd endpoint : %v", endpoint.String())
 	client := etcd.NewClient([]string{endpoint.String()})
 	client.SetConsistency(etcd.WEAK_CONSISTENCY)
+	client.SetDialTimeout(etcdDialTimeout) // Attempt to resolve etcd connectivity after docker container startup
 	return client, nil
 }
 
