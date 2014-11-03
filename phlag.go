@@ -19,11 +19,10 @@ var durationKind = reflect.TypeOf(time.Nanosecond).Kind()
 var etcdDialTimeout = time.Second * 5
 
 const (
-	phlagTag       = "phlag"
-	descriptionTag = "description"
-	etcdTag        = "etcd"
+	phlagTag        = "phlag"
+	descriptionTag  = "description"
+	etcdTag         = "etcd"
 	EtcdEndpointVar = "ETCD_ENDPOINT"
-
 )
 
 type Phlag struct {
