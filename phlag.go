@@ -19,9 +19,11 @@ var durationKind = reflect.TypeOf(time.Nanosecond).Kind()
 var etcdDialTimeout = time.Second * 5
 
 const (
-	phlagTag        = "phlag"
-	descriptionTag  = "description"
+	phlagTag       = "phlag"
+	descriptionTag = "description"
+	etcdTag        = "etcd"
 	EtcdEndpointVar = "ETCD_ENDPOINT"
+
 )
 
 type Phlag struct {
@@ -79,7 +81,7 @@ func NewWithClient(client etcdClient, template string) *Phlag {
 }
 
 // Get the named parameter from either the cli or etcd
-func (e *Phlag) Get(name string) *string {
+func (e *Phlag) Get(name, etcdPath string) *string {
 	if flagGiven(flagSet, name) {
 		valueFromCli := flagSet.Lookup(name)
 		Logger("Using command line value %v for param %v", valueFromCli.Value.String(), name)
@@ -93,9 +95,11 @@ func (e *Phlag) Get(name string) *string {
 
 	// No command line param given, lookup through etcd
 	// Logger("Fetching param %v from etcd", name)
-	etcPath := fmt.Sprintf(e.etcdPathTemplate, name)
-	// Logger("Using etc path %v", etcPath)
-	valueFromEtcd, err := e.client.Get(etcPath, false, false)
+	if etcdPath == "" {
+		etcdPath = fmt.Sprintf(e.etcdPathTemplate, name)
+	}
+	// Logger("Using etc path %v", etcdPath)
+	valueFromEtcd, err := e.client.Get(etcdPath, false, false)
 	if err != nil { // TODO : Sort out '100: Key not found' messages
 		Logger(err.Error())
 		return nil
@@ -126,7 +130,8 @@ func (e *Phlag) Resolve(target interface{}) {
 	flagSet.Parse(flagSetArgs)
 	for _, field := range s.Fields() {
 		configuredName := field.Tag(phlagTag)
-		resolvedValue := e.Get(configuredName)
+		etcdPath := field.Tag(etcdTag)
+		resolvedValue := e.Get(configuredName, etcdPath)
 		if resolvedValue == nil {
 			Logger("Cannot resolve field %v using cli params or etcd", configuredName)
 			continue
