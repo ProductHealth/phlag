@@ -115,6 +115,9 @@ func (e *Phlag) Resolve(target interface{}) {
 	s := structs.New(target)
 	for _, field := range s.Fields() {
 		configuredName := field.Tag(phlagTag)
+		if configuredName == "" {
+			continue
+		}
 		description := field.Tag(descriptionTag)
 		switch field.Kind() {
 		case durationKind:
@@ -129,6 +132,9 @@ func (e *Phlag) Resolve(target interface{}) {
 	flagSet.Parse(flagSetArgs)
 	for _, field := range s.Fields() {
 		configuredName := field.Tag(phlagTag)
+		if configuredName == "" {
+			continue
+		}
 		etcdPath := field.Tag(etcdTag)
 		resolvedValue := e.Get(configuredName, etcdPath)
 		if resolvedValue == nil {
