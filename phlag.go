@@ -39,6 +39,7 @@ type etcdClient interface {
 
 func New(template string) (*Phlag, error) {
 	client, _ := getcd.NewEtcdClient()
+	Logger("ETCD CLIENT: %#v", client)
 	return NewWithClient(client, template), nil
 }
 
