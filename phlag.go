@@ -37,16 +37,18 @@ type etcdClient interface {
 	Get(string, bool, bool) (*etcd.Response, error)
 }
 
-func New(template string) (*Phlag, error) {
+func New(etcdPathTemplate string) (*Phlag, error) {
+	if os.Getenv(getcd.EtcdEndpointVar) == "" {
+		Logger("No etcd available. Will only resolve using command line parameters.")
+		return &Phlag{nil, ""}, nil
+	}
+
 	client, err := getcd.NewEtcdClient()
 	if err != nil {
 		return nil, err
 	}
-	return NewWithClient(client, template), nil
-}
 
-func NewWithClient(client etcdClient, template string) *Phlag {
-	return &Phlag{client, template}
+	return &Phlag{client: client, etcdPathTemplate: etcdPathTemplate}, nil
 }
 
 // Get the named parameter from either the cli or etcd
@@ -58,6 +60,7 @@ func (e *Phlag) Get(name, etcdPath string) *string {
 		return &cliValue
 	}
 
+	//Here we take care of the case when we do not have access to etcd
 	if e.client == nil {
 		return nil
 	}
@@ -97,8 +100,8 @@ func (e *Phlag) Resolve(target interface{}) {
 		case reflect.Int:
 			flagSet.Int(configuredName, field.Value().(int), description)
 		}
-
 	}
+
 	flagSet.Parse(flagSetArgs)
 	for _, field := range s.Fields() {
 		configuredName := field.Tag(phlagTag)
