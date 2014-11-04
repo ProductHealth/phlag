@@ -21,6 +21,7 @@ const (
 	etcdTag        = "etcd"
 	phlagTag       = "phlag"
 	descriptionTag = "description"
+	etcdEndpointKey = "ETCD_ENDPONT"
 )
 
 type Phlag struct {
@@ -38,11 +39,16 @@ type etcdClient interface {
 }
 
 func New(etcdPathTemplate string) (*Phlag, error) {
-	client, err := getcd.NewEtcdClient()
-	if err != nil {
+	if os.Getenv(etcdEndpointKey) == "" {
 		Logger("No etcd available. Will only resolve using command line parameters.")
 		return &Phlag{nil, ""}, nil
 	}
+
+	client, err := getcd.NewEtcdClient()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Phlag{client: client, etcdPathTemplate: etcdPathTemplate}, nil
 }
 
