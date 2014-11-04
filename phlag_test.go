@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/stretchr/testify/assert"
-	"os"
 	"testing"
 	"time"
 )
@@ -71,33 +70,6 @@ func TestFlagGivenValidatesGivenFlags(t *testing.T) {
 
 	assert.True(t, flagGiven(fs, "test"))
 	assert.False(t, flagGiven(fs, "test2"))
-}
-
-func TestNewEtcdClientClientCreationFailsWhenEnvVarDoesNotExist(t *testing.T) {
-	_, err := NewEtcdClientFromEnvironment("TEST_ENV_1")
-	assert.Error(t, err)
-}
-
-func TestNewEtcdClientClientCreationFailsWhenNonAbsoluteUrlGiven(t *testing.T) {
-	EtcdHostEnvVar := "TEST_ENV_2"
-	os.Setenv(EtcdHostEnvVar, "1.2.3.4:4001") // scheme missing
-	_, err := NewEtcdClientFromEnvironment(EtcdHostEnvVar)
-	assert.Error(t, err)
-}
-
-func TestNewEtcdClientClientCreationFailsWhenInvalidUrlGiven(t *testing.T) {
-	EtcdHostEnvVar := "TEST_ENV_3"
-	os.Setenv(EtcdHostEnvVar, "thisisnotaurlatall!")
-	_, err := NewEtcdClientFromEnvironment(EtcdHostEnvVar)
-	assert.Error(t, err)
-}
-
-func TestNewClientCreationsCompletesWhenGivenAValidUrl(t *testing.T) {
-	EtcdHostEnvVar := "TEST_ENV_4"
-	os.Setenv(EtcdHostEnvVar, "http://localhost:4001")
-	client, err := NewEtcdClientFromEnvironment(EtcdHostEnvVar)
-	assert.NoError(t, err)
-	assert.NotNil(t, client)
 }
 
 func TestGetResolvesCliParamsFirst(t *testing.T) {

@@ -3,10 +3,10 @@ package phlag
 import (
 	"flag"
 	"fmt"
+	getcd "github.com/ProductHealth/gommons/etcd"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/fatih/structs"
 	"log"
-	"net/url"
 	"os"
 	"reflect"
 	"strconv"
@@ -16,12 +16,10 @@ import (
 var flagSet = flag.CommandLine
 var flagSetArgs = os.Args[1:]
 var durationKind = reflect.TypeOf(time.Nanosecond).Kind()
-var etcdDialTimeout = time.Second * 5
 
 const (
-	phlagTag        = "phlag"
-	descriptionTag  = "description"
-	EtcdEndpointVar = "ETCD_ENDPOINT"
+	phlagTag       = "phlag"
+	descriptionTag = "description"
 )
 
 type Phlag struct {
@@ -39,39 +37,11 @@ type etcdClient interface {
 }
 
 func New(template string) (*Phlag, error) {
-	client, err := NewEtcdClientFromEnvironment(EtcdEndpointVar)
+	client, err := getcd.NewEtcdClient()
 	if err != nil {
 		return nil, err
 	}
 	return NewWithClient(client, template), nil
-}
-
-func NewEtcdClientFromEnvironment(envName string) (*etcd.Client, error) {
-	etcdHostEnv := os.Getenv(envName)
-	if etcdHostEnv == "" {
-		return nil, fmt.Errorf("Env var %v empty or nonexistent", envName)
-	} else {
-		parsedEtcdUrl, err := url.Parse(etcdHostEnv)
-		if err != nil {
-			Logger(err.Error())
-			return nil, err
-		}
-		return NewEtcdClientWithEndpoint(parsedEtcdUrl)
-	}
-}
-
-func NewEtcdClientWithEndpoint(endpoint *url.URL) (*etcd.Client, error) {
-	if !endpoint.IsAbs() {
-		err := fmt.Errorf("endpoint '%v' is not an absolute url ( http://foo.com:4001 )", endpoint.String())
-		Logger(err.Error())
-		return nil, err
-	}
-
-	Logger("Using etcd endpoint : %v", endpoint.String())
-	client := etcd.NewClient([]string{endpoint.String()})
-	client.SetConsistency(etcd.WEAK_CONSISTENCY)
-	client.SetDialTimeout(etcdDialTimeout) // Attempt to resolve etcd connectivity after docker container startup
-	return client, nil
 }
 
 func NewWithClient(client etcdClient, template string) *Phlag {
