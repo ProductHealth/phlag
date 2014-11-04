@@ -37,14 +37,16 @@ type etcdClient interface {
 	Get(string, bool, bool) (*etcd.Response, error)
 }
 
-func New(template string) (*Phlag, error) {
-	client, _ := getcd.NewEtcdClient()
-	Logger("ETCD CLIENT: %#v", client)
-	return NewWithClient(client, template), nil
+func New(etcdPathTemplate string) (*Phlag, error) {
+	client, err := getcd.NewEtcdClient()
+	if err != nil {
+		return NewWithClient(nil, ""), nil
+	}
+	return NewWithClient(client, etcdPathTemplate), nil
 }
 
-func NewWithClient(client etcdClient, template string) *Phlag {
-	return &Phlag{client, template}
+func NewWithClient(client etcdClient, etcdPathTemplate string) *Phlag {
+	return &Phlag{client: client, etcdPathTemplate: etcdPathTemplate}
 }
 
 // Get the named parameter from either the cli or etcd
