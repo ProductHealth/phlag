@@ -82,7 +82,7 @@ func TestGetResolvesCliParamsFirst(t *testing.T) {
 	fakeClient := newFakeEtcdClient()
 	fakeClient.Set(fmt.Sprintf(PathTemplate, "param1"), "valuefrometc")
 	ph := NewWithClient(fakeClient, "/params%v")
-	param1 := ph.Get("param1")
+	param1 := ph.Get("param1", "")
 	assert.Equal(t, "valuefromflag", *param1)
 }
 
@@ -96,8 +96,24 @@ func TestGetResolvesEtcdIfCliFails(t *testing.T) {
 	fakeClient := newFakeEtcdClient()
 	fakeClient.Set(fmt.Sprintf(PathTemplate, "param2"), "valuefrometc")
 	ph := NewWithClient(fakeClient, PathTemplate)
-	param1 := ph.Get("param1")
-	param2 := ph.Get("param2")
+	param1 := ph.Get("param1", "")
+	param2 := ph.Get("param2", "")
+	assert.Equal(t, "valuefromflag", *param1)
+	assert.Equal(t, "valuefrometc", *param2)
+}
+
+func TestGetResolvesEtcdWithExplicitPathIfCliFails(t *testing.T) {
+	// Setup flag
+	flagSet = flag.NewFlagSet("test", flag.ContinueOnError)
+	flagSet.String("param1", "param1", "param1")
+	flagSet.Parse([]string{"--param1", "valuefromflag"})
+
+	// Setup etcd
+	fakeClient := newFakeEtcdClient()
+	fakeClient.Set("/explicit/etcd/path", "valuefrometc")
+	ph := NewWithClient(fakeClient, PathTemplate)
+	param1 := ph.Get("param1", "")
+	param2 := ph.Get("param2", "/explicit/etcd/path")
 	assert.Equal(t, "valuefromflag", *param1)
 	assert.Equal(t, "valuefrometc", *param2)
 }
@@ -110,7 +126,7 @@ func TestGetReturnsNilIfKeyNotAvailable(t *testing.T) {
 	// Setup etcd
 	fakeClient := newFakeEtcdClient()
 	ph := NewWithClient(fakeClient, PathTemplate)
-	param1 := ph.Get("param1")
+	param1 := ph.Get("param1", "")
 	assert.Nil(t, param1)
 }
 
