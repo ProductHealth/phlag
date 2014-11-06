@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-var flagSet = flag.CommandLine
-var flagSetArgs = os.Args[1:]
 var durationKind = reflect.TypeOf(time.Nanosecond).Kind()
 
 const (
@@ -53,8 +51,8 @@ func New(etcdPathTemplate string) (*Phlag, error) {
 
 // Get the named parameter from either the cli or etcd
 func (e *Phlag) Get(name, etcdPath string) *string {
-	if flagGiven(flagSet, name) {
-		valueFromCli := flagSet.Lookup(name)
+	if flagGiven(name) {
+		valueFromCli := flag.Lookup(name)
 		Logger("Using command line value %v for param %v", valueFromCli.Value.String(), name)
 		cliValue := valueFromCli.Value.String()
 		return &cliValue
@@ -94,15 +92,15 @@ func (e *Phlag) Resolve(target interface{}) {
 		description := field.Tag(descriptionTag)
 		switch field.Kind() {
 		case durationKind:
-			flagSet.String(configuredName, field.Value().(time.Duration).String(), description)
+			flag.String(configuredName, field.Value().(time.Duration).String(), description)
 		case reflect.String:
-			flagSet.String(configuredName, field.Value().(string), description)
+			flag.String(configuredName, field.Value().(string), description)
 		case reflect.Int:
-			flagSet.Int(configuredName, field.Value().(int), description)
+			flag.Int(configuredName, field.Value().(int), description)
 		}
 	}
 
-	flagSet.Parse(flagSetArgs)
+	flag.Parse()
 	for _, field := range s.Fields() {
 		configuredName := field.Tag(phlagTag)
 		if configuredName == "" {
@@ -145,9 +143,10 @@ func (e *Phlag) Resolve(target interface{}) {
 	}
 }
 
-func flagGiven(flagSet *flag.FlagSet, name string) bool {
+func flagGiven(
+name string) bool {
 	var flags = []string{}
-	flagSet.Visit(func(f *flag.Flag) { flags = append(flags, f.Name) })
+	flag.Visit(func(f *flag.Flag) { flags = append(flags, f.Name) })
 	return stringInSlice(name, flags)
 }
 
