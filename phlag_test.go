@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 	"time"
 )
@@ -63,20 +64,22 @@ func (f *fakeEtcdClient) Get(path string, _ bool, _ bool) (*etcd.Response, error
 }
 
 func TestFlagGivenValidatesGivenFlags(t *testing.T) {
-	fs := flag.NewFlagSet("test", flag.ExitOnError)
-	fs.String("test", "test", "test")
-	fs.String("test2", "test2", "test2")
-	fs.Parse([]string{"--test", "foo"})
+	flag.CommandLine = flag.NewFlagSet("test", flag.ExitOnError)
+	flag.String("test", "test", "test")
+	flag.String("test2", "test2", "test2")
+	os.Args = []string{"foobar","--test", "foo"}
+	flag.Parse()
 
-	assert.True(t, flagGiven(fs, "test"))
-	assert.False(t, flagGiven(fs, "test2"))
+	assert.True(t, flagGiven("test"))
+	assert.False(t, flagGiven("test2"))
 }
 
 func TestGetResolvesCliParamsFirst(t *testing.T) {
 	// Setup flag
-	flagSet = flag.NewFlagSet("test", flag.ContinueOnError)
-	flagSet.String("param1", "param1", "param1")
-	flagSet.Parse([]string{"--param1", "valuefromflag"})
+	flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
+	flag.String("param1", "param1", "param1")
+	os.Args = []string{"foobar","--param1", "valuefromflag"}
+	flag.Parse()
 
 	// Setup etcd
 	fakeClient := newFakeEtcdClient()
@@ -88,9 +91,10 @@ func TestGetResolvesCliParamsFirst(t *testing.T) {
 
 func TestGetResolvesEtcdIfCliFails(t *testing.T) {
 	// Setup flag
-	flagSet = flag.NewFlagSet("test", flag.ContinueOnError)
-	flagSet.String("param1", "param1", "param1")
-	flagSet.Parse([]string{"--param1", "valuefromflag"})
+	flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
+	flag.String("param1", "param1", "param1")
+	os.Args = []string{"foobar","--param1", "valuefromflag"}
+	flag.Parse()
 
 	// Setup etcd
 	fakeClient := newFakeEtcdClient()
@@ -104,9 +108,10 @@ func TestGetResolvesEtcdIfCliFails(t *testing.T) {
 
 func TestGetResolvesEtcdWithExplicitPathIfCliFails(t *testing.T) {
 	// Setup flag
-	flagSet = flag.NewFlagSet("test", flag.ContinueOnError)
-	flagSet.String("param1", "param1", "param1")
-	flagSet.Parse([]string{"--param1", "valuefromflag"})
+	flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
+	flag.String("param1", "param1", "param1")
+	os.Args = []string{"foobar","--param1", "valuefromflag"}
+	flag.Parse()
 
 	// Setup etcd
 	fakeClient := newFakeEtcdClient()
@@ -120,8 +125,9 @@ func TestGetResolvesEtcdWithExplicitPathIfCliFails(t *testing.T) {
 
 func TestGetReturnsNilIfKeyNotAvailable(t *testing.T) {
 	// Setup flag
-	flagSet = flag.NewFlagSet("test1", flag.ContinueOnError)
-	flagSet.Parse([]string{})
+	flag.CommandLine = flag.NewFlagSet("test1", flag.ContinueOnError)
+	os.Args = []string{"foobar"}
+	flag.Parse()
 
 	// Setup etcd
 	fakeClient := newFakeEtcdClient()
@@ -132,8 +138,9 @@ func TestGetReturnsNilIfKeyNotAvailable(t *testing.T) {
 
 func TestResolvesPopulatesStringFields(t *testing.T) {
 	// Setup flag
-	flagSet = flag.NewFlagSet("", flag.ContinueOnError)
-	flagSetArgs = []string{"--s", "stringvalue", "--i", "123", "--d", "5m"}
+	flag.CommandLine = flag.NewFlagSet("", flag.ContinueOnError)
+	os.Args = []string{"foobar", "--s", "stringvalue", "--i", "123", "--d", "5m"}
+	flag.Parse()
 
 	// Setup etcd
 	fakeClient := newFakeEtcdClient()
@@ -149,8 +156,9 @@ func TestResolvesPopulatesStringFields(t *testing.T) {
 
 func TestResolveAllowsMissingFields(t *testing.T) {
 	// Setup flag
-	flagSet = flag.NewFlagSet("", flag.ContinueOnError)
-	flagSetArgs = []string{"--s", "stringvalue"}
+	flag.CommandLine = flag.NewFlagSet("", flag.ContinueOnError)
+	os.Args = []string{"foobar", "--s", "stringvalue"}
+	flag.Parse()
 
 	// Setup etcd
 	fakeClient := newFakeEtcdClient()
